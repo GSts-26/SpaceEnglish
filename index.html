@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Space English Adventure</title>
+  <style>
+    :root{
+      --bg:#0a0f1e;--card:#121a33;--card-2:#0e1530;--text:#e6ecff;--muted:#9fb0ff;--accent:#6da8ff;--good:#2bd887;--bad:#ff5d6c;--locked:#7a86a7;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Arial,sans-serif;
+      color:var(--text);background: radial-gradient(1200px 800px at 70% 20%, #17234d 0%, #0e1834 38%, #0a0f1e 72%);
+      min-height:100vh;overflow-x:hidden
+    }
+    .stars{position:fixed;inset:0;pointer-events:none;z-index:-1;background-image:radial-gradient(#ffffff40 1px, transparent 1px);background-size:3px 3px;opacity:.35}
+    .container{max-width:1100px;margin:0 auto;padding:24px}
+    header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px}
+    h1{font-weight:800;letter-spacing:.3px;margin:0;font-size: clamp(20px, 3.6vw, 36px)}
+    .btn{background:linear-gradient(135deg,#3a66ff,#6da8ff);border:none;color:#fff;padding:10px 16px;border-radius:14px;font-weight:700;cursor:pointer;box-shadow:0 8px 20px #3558ff55;transition:transform .15s ease, opacity .2s;}
+    .btn:hover{transform:translateY(-1px)}
+    .btn:disabled{opacity:.6;cursor:not-allowed;filter:grayscale(.3)}
+    .link{color:var(--accent);cursor:pointer;text-decoration:underline}
+
+    .screen{display:none;animation:fade .25s ease}
+    .screen.active{display:block}
+    @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+
+    .card{background:linear-gradient(180deg,var(--card),var(--card-2));border:1px solid #2a3766;box-shadow:0 10px 30px #00000040;border-radius:20px;padding:18px}
+
+    /* MAPA */
+    .map-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:18px;margin-top:18px}
+    .planet{position:relative;isolation:isolate,}
+    .planet .title{font-weight:800;margin-top:8px}
+    .planet .desc{color:var(--muted);font-size:.9rem}
+    .planet-orb{aspect-ratio:1/1;border-radius:50%;display:grid;place-items:center;font-weight:900;font-size:32px;color:#fff;box-shadow:inset -12px -14px 30px #00000060, 0 10px 30px #00000066;border:2px solid #2a3766}
+    .lock{position:absolute;inset:0;display:grid;place-items:center;background:#0b11261a;border-radius:16px;border:1px dashed #7482b555}
+    .lock span{display:inline-flex;align-items:center;gap:8px;background:#0b1126aa;padding:8px 10px;border-radius:999px;font-weight:800;color:var(--locked)}
+    .badge{display:inline-flex;gap:8px;align-items:center;background:#0b1126dd;border:1px solid #2a3766;border-radius:999px;padding:6px 10px;color:var(--muted);font-weight:700}
+
+.planet-image-container {
+  display: flex;
+  justify-content: center; /* Centers horizontally */
+  align-items: center;     /* Centers vertically (if the container has a defined height) */
+  width: 100%;
+  height: 170px;
+}
+
+.planet-image {
+  width: 160px;
+  aspect-ratio: 1/1;
+  border-radius: 50%;
+  box-shadow: inset -12px -14px 30px #00000060, 0 10px 30px #00000066;
+  border: 2px solid #2a3766;
+}
+    /* PLANETA (niveles) */
+    .levels{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}
+    .level{display:flex;flex-direction:column;gap:6px}
+    .level h4{margin:0}
+    .status-done{color:var(--good);font-weight:700}
+    .status-todo{color:var(--muted)}
+
+    /* QUIZ */
+    .quiz{display:flex;flex-direction:column;gap:14px}
+    .question{font-weight:800;font-size:1.1rem}
+    .options{display:grid;gap:10px}
+    .option{background:#0b1126;border:1px solid #2a3766;color:var(--text);padding:12px 14px;border-radius:14px;cursor:pointer;font-weight:700}
+    .option.correct{outline:2px solid var(--good)}
+    .option.wrong{outline:2px solid var(--bad)}
+    .progress{height:8px;background:#0b1126;border:1px solid #2a3766;border-radius:999px;overflow:hidden}
+    .progress > div{height:100%;background:linear-gradient(90deg,#3a66ff,#6da8ff);width:0%}
+
+    .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#0b1126dd;border:1px solid #2a3766;color:var(--text);padding:10px 14px;border-radius:999px;box-shadow:0 10px 30px #00000066;display:none}
+    .toast.show{display:block}
+    footer{color:#97a3d7;text-align:center;margin:22px 0 10px}
+  </style>
+</head>
+<body>
+  <div class="stars"></div>
+  <div class="container">
+    <header>
+      <h1>🚀 Space English Adventure</h1>
+      <div>
+        <button id="btnMap" class="btn">Mapa</button>
+        <button id="btnReset" class="btn" title="Reiniciar progreso">Reiniciar</button>
+      </div>
+    </header>
+
+    <!-- Pantalla: MAPA DE PLANETAS -->
+    <section id="screen-map" class="screen active">
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+          <div>
+            <h2 style="margin:0">Elige un planeta</h2>
+            <p style="margin:.2rem 0;color:var(--muted)">Completa los niveles para desbloquear el siguiente planeta.</p>
+          </div>
+          <div class="badge" id="overallProgress">Progreso total: 0%</div>
+        </div>
+        <div id="planets" class="map-grid" aria-live="polite"></div>
+      </div>
+    </section>
+
+    <!-- Pantalla: PLANETA (niveles) -->
+    <section id="screen-planet" class="screen">
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+          <div>
+            <h2 id="planetTitle" style="margin:0">Planeta</h2>
+            <p id="planetDesc" style="margin:.2rem 0;color:var(--muted)">Niveles disponibles</p>
+          </div>
+          <button class="btn" onclick="showScreen('screen-map')">⭠ Volver</button>
+        </div>
+        <div id="levels" class="levels" aria-live="polite"></div>
+      </div>
+    </section>
+
+    <!-- Pantalla: QUIZ -->
+    <section id="screen-quiz" class="screen">
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+          <div>
+            <h2 id="quizTitle" style="margin:0">Nivel</h2>
+            <p id="quizSubtitle" style="margin:.2rem 0;color:var(--muted)">Responde en inglés</p>
+          </div>
+          <!-- Badge de vidas (reutiliza estilo existente) -->
+          <div id="livesBadge" class="badge" aria-live="polite" title="Vidas restantes" style="display:none">Vidas: ❤️❤️❤️</div>
+          <button class="btn" onclick="exitQuiz()">⭠ Salir</button>
+        </div>
+
+        <div class="progress" aria-hidden="true"><div id="progressBar"></div></div>
+        <div id="quiz" class="quiz"></div>
+      </div>
+    </section>
+
+    
+  </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script src="script.js"></script>
+
+<script>
+// ------------------ DATA DEL JUEGO ------------------
+const GAME = {
+  planets: [
+    { id: 1, key: 'p1', name: 'Mercury', css:'p1', desc: 'Vocabulario básico',
+      levels: [
+        { id: 1, name: 'Saludos', questions: [
+          {q:'How do you say "Hola" in English?', opts:['Hello','Goodbye','Please','Thanks'], ans:0},
+          {q:'Choose the correct option: "¿Cómo estás?"', opts:['How are you?','Who are you?','Where are you?','What are you?'], ans:0},
+          {q:'"Buenos días" =', opts:['Good morning','Good night','Good evening','See you'], ans:0},
+          {q:'"Adiós" =', opts:['Goodbye','Hello','Good night','Please'], ans:0},
+          {q:'"Por favor" =', opts:['Thanks','Please','Sorry','Excuse me'], ans:1},
+          {q:'"Gracias" =', opts:['Please','Sorry','Thanks','Hello'], ans:2},
+          {q:'"Buenas noches" (despedida) =', opts:['Good morning','Good evening','Good night','See you'], ans:2},
+          {q:'"Nos vemos" =', opts:['See you','Thank you','Excuse me','Take care'], ans:0},
+          {q:'"Perdón / Disculpa" =', opts:['Excuse me','Please','Hello','Nice to meet you'], ans:0},
+          {q:'"Encantado de conocerte" =', opts:['Nice to meet you','Good luck','Take care','Good job'], ans:0},
+        ]},
+        { id: 2, name: 'Colores', questions: [
+          {q:'"Rojo" en inglés es…', opts:['Blue','Red','Green','Yellow'], ans:1},
+          {q:'Choose the color: "Amarillo"', opts:['Black','Orange','Pink','Yellow'], ans:3},
+          {q:'"Verde" =', opts:['Brown','Green','Purple','Gray'], ans:1},
+          {q:'"Azul" =', opts:['Blue','Red','Pink','White'], ans:0},
+          {q:'"Negro" =', opts:['Purple','Black','Brown','Gray'], ans:1},
+          {q:'"Blanco" =', opts:['White','Orange','Silver','Gold'], ans:0},
+          {q:'"Anaranjado" =', opts:['Orange','Yellow','Red','Pink'], ans:0},
+          {q:'"Rosado" =', opts:['Brown','Pink','Purple','Gray'], ans:1},
+          {q:'"Morado" =', opts:['Purple','Green','Blue','Black'], ans:0},
+          {q:'"Café/Marrón" =', opts:['Brown','Gray','Beige','Silver'], ans:0},
+        ]},
+        { id: 3, name: 'Objetos', questions: [
+          {q:'"Libro" en inglés es…', opts:['Pen','Book','Table','Window'], ans:1},
+          {q:'Select the correct word for "Silla"', opts:['Chair','Door','Cup','Bag'], ans:0},
+          {q:'"Lápiz" =', opts:['Pencil','Paper','Eraser','Notebook'], ans:0},
+          {q:'"Mesa" =', opts:['Table','Board','Desk','Bed'], ans:0},
+          {q:'"Cuaderno" =', opts:['Ruler','Eraser','Notebook','Paper'], ans:2},
+          {q:'"Borrador" =', opts:['Ruler','Eraser','Marker','Glue'], ans:1},
+          {q:'"Regla" =', opts:['Ruler','Compass','Scissors','Sharpener'], ans:0},
+          {q:'"Mochila" =', opts:['Backpack','Bottle','Bag','Box'], ans:0},
+          {q:'"Ventana" =', opts:['Wall','Door','Window','Floor'], ans:2},
+          {q:'"Puerta" =', opts:['Door','Roof','Chair','Board'], ans:0},
+        ]},
+      ]
+    },
+    { id: 2, key: 'p2', name: 'Venus', css:'p2', desc: 'Frases simples',
+      levels: [
+        { id: 1, name: 'Presentaciones', questions: [
+          {q:'Complete: "My name ___ John"', opts:['am','is','are','be'], ans:1},
+          {q:'"Yo tengo 18 años" =', opts:['I am 18 years old','I have 18 years','I am 18 years','I got 18'], ans:0},
+          {q:'Choose: "Encantado de conocerte"', opts:['Nice to meet you','See you later','Good luck','Take care'], ans:0},
+          {q:'"¿De dónde eres?" =', opts:['Where are you from?','Where do you from?','Where you from?','From where are you?'], ans:0},
+          {q:'Complete: "I ___ from Colombia"', opts:['is','are','am','be'], ans:2},
+          {q:'"Este es mi amigo" =', opts:['This is my friend','That is my friend','These is my friend','Those is my friend'], ans:0},
+          {q:'"¿Cuál es tu apellido?" =', opts:['What is your last name?','Which your last name?','Who is your last name?','How is your last name?'], ans:0},
+          {q:'"Vivo en Medellín" =', opts:['I live at Medellín','I live on Medellín','I live in Medellín','I am live Medellín'], ans:2},
+          {q:'"Mucho gusto, soy Duván" =', opts:['Nice to meet you, I am Duván','Nice meet you, I Duván','Much pleasure, I am Duván','Please to meet you, I am Duván'], ans:0},
+          {q:'Complete: "What is ___ name?"', opts:['you','your','yours','you\'re'], ans:1},
+        ]},
+        { id: 2, name: 'Verbo To Be', questions: [
+          {q:'"Ella es estudiante" =', opts:['She are student','She is a student','She am student','She be student'], ans:1},
+          {q:'Complete: "They ___ from Colombia"', opts:['is','are','am','be'], ans:1},
+          {q:'"Nosotros estamos felices" =', opts:['We is happy','We are happy','We am happy','We be happy'], ans:1},
+          {q:'"Yo no soy alto" =', opts:['I am not tall','I am no tall','I not am tall','I don\'t am tall'], ans:0},
+          {q:'Pregunta correcta: "¿Eres profesor?"', opts:['Are you a teacher?','You are a teacher?','Do you are a teacher?','Is you a teacher?'], ans:0},
+          {q:'Elige la contracción: "They are" =', opts:['They\'re','They are\'nt','They am','They is'], ans:0},
+          {q:'Complete: "It ___ cold today"', opts:['am','are','is','be'], ans:2},
+          {q:'Negativa correcta: "Ella no está en casa"', opts:['She isn\'t at home','She aren\'t at home','She don\'t at home','She not is at home'], ans:0},
+          {q:'Pregunta: "¿Estamos listos?"', opts:['Are we ready?','We are ready?','Do we are ready?','Be we ready?'], ans:0},
+          {q:'Complete: "I ___ hungry"', opts:['are','is','am','be'], ans:2},
+        ]},
+        { id: 3, name: 'Artículos', questions: [
+          {q:'Choose the correct article: __ apple', opts:['a','an','the','—'], ans:1},
+          {q:'Select: __ sun is bright', opts:['A','An','The','—'], ans:2},
+          {q:'Choose: I have __ dog', opts:['a','an','the','—'], ans:0},
+          {q:'Completa: She is ___ engineer', opts:['a','an','the','—'], ans:1},
+          {q:'Correcto: I want ___ orange', opts:['a','an','the','—'], ans:1},
+          {q:'Correcto: Pass me ___ salt, please', opts:['a','an','the','—'], ans:2},
+          {q:'Elige: He bought ___ new car', opts:['a','an','the','—'], ans:0},
+          {q:'Elige: I don\'t like ___ milk', opts:['a','an','the','—'], ans:3},
+          {q:'Elige: ___ Earth orbits the sun', opts:['A','An','The','—'], ans:2},
+          {q:'Elige: She is playing ___ piano', opts:['a','an','the','—'], ans:2},
+        ]},
+      ]
+    },
+    { id: 3, key: 'p3', name: 'Earth', css:'p3', desc: 'Preguntas WH',
+      levels: [
+        { id: 1, name: 'Who/Where', questions: [
+          {q:'Choose: "¿Quién es tu profesor?"', opts:['Where is your teacher?','Who is your teacher?','When is your teacher?','What is your teacher?'], ans:1},
+          {q:'"¿Dónde vives?" =', opts:['Who do you live?','Where do you live?','What do you live?','When do you live?'], ans:1},
+          {q:'Select: "¿Quién eres?"', opts:['Who are you?','Where are you?','When are you?','Why are you?'], ans:0},
+          {q:'"¿Dónde está el baño?" =', opts:['Where is the bathroom?','Who is the bathroom?','What is the bathroom?','When is the bathroom?'], ans:0},
+          {q:'"¿Quién es ella?" =', opts:['Who is she?','Where is she?','What is she?','How is she?'], ans:0},
+          {q:'"¿Dónde está mi libro?" =', opts:['Where is my book?','Who is my book?','What is my book?','When is my book?'], ans:0},
+          {q:'"¿Quién juega hoy?" =', opts:['Who plays today?','Where plays today?','When plays today?','What plays today?'], ans:0},
+          {q:'"¿Dónde trabajan ellos?" =', opts:['Where do they work?','Where are they work?','Where they work?','Where do they works?'], ans:0},
+          {q:'"¿Quién te llamó?" =', opts:['Who called you?','Who did call you?','Who calls you?','Who was call you?'], ans:0},
+          {q:'"¿Dónde naciste?" =', opts:['Where were you born?','Where are you born?','Where did you born?','Where you born?'], ans:0},
+        ]},
+        { id: 2, name: 'What/When', questions: [
+          {q:'"¿Qué hora es?" =', opts:['What time is it?','Where time is it?','Who time is it?','When time is it?'], ans:0},
+          {q:'Choose: "¿Cuándo es tu cumpleaños?"', opts:['What is your birthday?','When is your birthday?','Where is your birthday?','Who is your birthday?'], ans:1},
+          {q:'"¿Qué es eso?" =', opts:['What is that?','Where is that?','Who is that?','When is that?'], ans:0},
+          {q:'"¿Cuándo empieza la clase?" =', opts:['When does class start?','What does class start?','When do class starts?','When class start is?'], ans:0},
+          {q:'"¿Qué quieres comer?" =', opts:['What do you want to eat?','When do you want eat?','What you want eat?','What are you want to eat?'], ans:0},
+          {q:'"¿Qué día es hoy?" =', opts:['What day is today?','What day is it today?','When day is today?','What is today day?'], ans:1},
+          {q:'"¿Cuándo llegas?" =', opts:['When do you arrive?','When you arrive?','When are you arrive?','When does you arrive?'], ans:0},
+          {q:'"¿Qué es tu trabajo?" =', opts:['What is your job?','What are your job?','What your job is?','What job you have?'], ans:0},
+          {q:'"¿Cuándo fue el partido?" =', opts:['When was the match?','When were the match?','When did was the match?','When the match was?'], ans:0},
+          {q:'"¿Qué película viste?" =', opts:['What movie did you watch?','What movie you watched?','What movie did you watched?','What movie have you watch?'], ans:0},
+        ]},
+        { id: 3, name: 'Why/How', questions: [
+          {q:'"¿Por qué estás triste?" =', opts:['Why are you sad?','How are you sad?','When are you sad?','Where are you sad?'], ans:0},
+          {q:'Choose: "¿Cómo te llamas?"', opts:['How are you called?','What is your name?','How is your name?','Who is your name?'], ans:1},
+          {q:'"¿Cómo llego allí?" =', opts:['How do I get there?','Where do I get there?','Why do I get there?','What do I get there?'], ans:0},
+          {q:'"¿Por qué estudias inglés?" =', opts:['Why do you study English?','How do you study English?','Why are you study English?','How are you study English?'], ans:0},
+          {q:'"¿Cómo estás?" (saludo) =', opts:['How are you?','How do you?','How is you?','How are you doing you?'], ans:0},
+          {q:'"¿Cómo funciona esto?" =', opts:['How does this work?','How this works?','How it does work?','How do this works?'], ans:0},
+          {q:'"¿Por qué llegaste tarde?" =', opts:['Why did you arrive late?','Why you arrived late?','Why do you arrived late?','Why are you arrive late?'], ans:0},
+          {q:'"¿Cómo se escribe tu nombre?" =', opts:['How do you spell your name?','How do you write your name?','How are you spell your name?','How do you spell you name?'], ans:0},
+          {q:'"¿Por qué te gusta eso?" =', opts:['Why do you like that?','How you like that?','Why are you like that?','How are you like that?'], ans:0},
+          {q:'"¿Cómo hiciste eso?" =', opts:['How did you do that?','How you did that?','How do you did that?','How did you that?'], ans:0},
+        ]},
+      ]
+    },
+    { id: 4, key: 'p4', name: 'Mars', css:'p4', desc: 'Presente simple',
+      levels: [
+        { id: 1, name: 'Rutinas', questions: [
+          {q:'Choose: "Él va a la escuela"', opts:['He go to school','He goes to school','He going to school','He gone to school'], ans:1},
+          {q:'"Ellos juegan fútbol los domingos" =', opts:['They plays football on Sundays','They play football on Sundays','They playing football on Sundays','They played football on Sundays'], ans:1},
+          {q:'Select: "Yo no trabajo los sábados"', opts:['I doesn\'t work on Saturdays','I not work on Saturdays','I don\'t work on Saturdays','I no work on Saturdays'], ans:2},
+          {q:'"Me levanto a las 6 am" =', opts:['I gets up at 6 am','I get up at 6 am','I am get up at 6 am','I getting up at 6 am'], ans:1},
+          {q:'"Ella estudia por la noche" =', opts:['She study at night','She studies at night','She studying at night','She is study at night'], ans:1},
+          {q:'"Nosotros almorzamos a mediodía" =', opts:['We lunch at noon','We have lunch at noon','We has lunch at noon','We having lunch at noon'], ans:1},
+          {q:'Forma correcta: "He ___ TV every day"', opts:['watch','watches','watchs','is watch'], ans:1},
+          {q:'Negativa: "They ___ go to the gym"', opts:['doesn\'t','don\'t','aren\'t','not'], ans:1},
+          {q:'Pregunta: "___ you wake up early?"', opts:['Do','Does','Are','Did'], ans:0},
+          {q:'"Siempre hago la tarea" =', opts:['I always do my homework','I always does my homework','I do always my homework','I am always do my homework'], ans:0},
+        ]},
+        { id: 2, name: 'Adverbios de frecuencia', questions: [
+          {q:'"Siempre" en inglés', opts:['Never','Sometimes','Always','Usually'], ans:2},
+          {q:'Choose the most natural: "I ___ drink coffee in the morning"', opts:['always','never','sometimes','rarely'], ans:0},
+          {q:'Place the adverb: She ___ reads at night (a veces)', opts:['always','never','sometimes','rarely'], ans:2},
+          {q:'Traduce: "casi nunca"', opts:['always','never','rarely','hardly ever'], ans:3},
+          {q:'"Usualmente" =', opts:['Seldom','Usually','Rarely','Often'], ans:1},
+          {q:'"A menudo" =', opts:['Often','Always','Never','Sometimes'], ans:0},
+          {q:'Elige: "He is ___ late"', opts:['always','never','sometimes','hardly ever'], ans:1},
+          {q:'"De vez en cuando" =', opts:['Every day','Once in a while','At once','In a while'], ans:1},
+          {q:'Posición natural: "I ___ go to the cinema" (raramente)', opts:['rarely','go rarely','am rarely go','rarely go'], ans:0},
+          {q:'Completa: "We ___ eat out on Fridays" (a veces)', opts:['sometimes','never','always','hardly ever'], ans:0},
+        ]},
+        { id: 3, name: 'Tercera persona', questions: [
+          {q:'Complete: "She ___ (study) English"', opts:['study','studies','studying','studied'], ans:1},
+          {q:'Choose: "Does he ___ pizza?"', opts:['like','likes','liked','liking'], ans:0},
+          {q:'Select: "He ___ not like tea"', opts:['do','does','doeses','did'], ans:1},
+          {q:'Correcto: "My brother ___ (watch) movies"', opts:['watch','watches','watchs','is watch'], ans:1},
+          {q:'Negativa: "She ___ (not) work on Sundays"', opts:['don\'t','doesn\'t','isn\'t','not'], ans:1},
+          {q:'Pregunta: "___ she play tennis?"', opts:['Do','Does','Is','Did'], ans:1},
+          {q:'Ortografía: "He ___ (go) to school"', opts:['go','goes','gos','go\'s'], ans:1},
+          {q:'Ortografía: "She ___ (try) new foods"', opts:['trys','tries','tryes','try'], ans:1},
+          {q:'Ortografía: "He ___ (fix) bikes"', opts:['fix','fixs','fixes','fixies'], ans:2},
+          {q:'Elige: "It ___ (need) water"', opts:['needs','need','needed','needing'], ans:0},
+        ]},
+      ]
+    },
+    { id: 5, key: 'p5', name: 'Jupiter', css:'p5', desc: 'Vocabulario temático',
+      levels: [
+        { id: 1, name: 'Comida', questions: [
+          {q:'"Manzana" en inglés', opts:['Orange','Apple','Grape','Pear'], ans:1},
+          {q:'Choose: "Pollo"', opts:['Chicken','Cheese','Fish','Bread'], ans:0},
+          {q:'"Agua" =', opts:['Milk','Juice','Water','Tea'], ans:2},
+          {q:'"Pan" =', opts:['Bread','Cheese','Rice','Pasta'], ans:0},
+          {q:'"Carne de res" =', opts:['Pork','Beef','Chicken','Fish'], ans:1},
+          {q:'"Huevo" =', opts:['Egg','Ham','Yogurt','Butter'], ans:0},
+          {q:'"Zanahoria" =', opts:['Tomato','Potato','Carrot','Onion'], ans:2},
+          {q:'"Arroz" =', opts:['Rice','Beans','Corn','Wheat'], ans:0},
+          {q:'"Queso" =', opts:['Cheese','Butter','Cream','Milk'], ans:0},
+          {q:'"Pescado" =', opts:['Meat','Chicken','Fish','Turkey'], ans:2},
+        ]},
+        { id: 2, name: 'Ropa', questions: [
+          {q:'Select: "Camisa"', opts:['Shirt','Shoes','Skirt','Suit'], ans:0},
+          {q:'Choose: "Pantalones"', opts:['Hat','Gloves','Pants','Jacket'], ans:2},
+          {q:'"Zapatos" =', opts:['Shoes','Socks','Shorts','Scarf'], ans:0},
+          {q:'"Sombrero" =', opts:['Hat','Coat','Boots','Belt'], ans:0},
+          {q:'"Vestido" =', opts:['Dress','Skirt','Suit','Jacket'], ans:0},
+          {q:'"Chaqueta" =', opts:['Jacket','Shirt','Coat','Sweater'], ans:0},
+          {q:'"Bufanda" =', opts:['Scarf','Gloves','Socks','Tie'], ans:0},
+          {q:'"Traje" =', opts:['Suit','Sweatshirt','Hoodie','Blouse'], ans:0},
+          {q:'"Medias" =', opts:['Socks','Shoes','Shorts','Jeans'], ans:0},
+          {q:'"Cinturón" =', opts:['Belt','Buckle','Cap','Coat'], ans:0},
+        ]},
+        { id: 3, name: 'Lugares', questions: [
+          {q:'"Hospital"', opts:['Library','Hospital','School','Airport'], ans:1},
+          {q:'Choose: "Aeropuerto"', opts:['Museum','Bank','Airport','Park'], ans:2},
+          {q:'"Biblioteca" =', opts:['Library','Bookshop','Classroom','Office'], ans:0},
+          {q:'"Restaurante" =', opts:['Restaurant','Cafeteria','Kitchen','Bar'], ans:0},
+          {q:'"Banco" =', opts:['Bank','Office','Market','Shop'], ans:0},
+          {q:'"Parque" =', opts:['Park','Square','Garden','Lake'], ans:0},
+          {q:'"Escuela" =', opts:['School','Class','College','University'], ans:0},
+          {q:'"Supermercado" =', opts:['Supermarket','Grocery','Market','Mall'], ans:0},
+          {q:'"Estación de policía" =', opts:['Police station','Fire station','Bus station','Train station'], ans:0},
+          {q:'"Iglesia" =', opts:['Church','Temple','Mosque','Cathedral'], ans:0},
+        ]},
+      ]
+    },
+  ]
+};
+
+// ------------------ ESTADO & PROGRESO ------------------
+const STORAGE_KEY = 'spaceEnglishProgress_v1';
+let state = {
+  unlockedPlanets: { p1: true, p2:false, p3:false, p4:false, p5:false },
+  completed: { /* pKey: { lvlId: true } */ },
+};
+
+function loadState(){
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if(raw){
+    try{ const parsed = JSON.parse(raw); state = Object.assign(state, parsed); }catch(e){ console.warn('Estado corrupto, reiniciando'); saveState(); }
+  } else { saveState(); }
+}
+function saveState(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+function resetState(){ localStorage.removeItem(STORAGE_KEY); loadState(); renderMap(); toast('Progreso reiniciado'); }
+
+function planetKeyById(id){ return GAME.planets.find(p=>p.id===id).key; }
+function planetByKey(key){ return GAME.planets.find(p=>p.key===key); }
+function isLevelDone(pKey,lvlId){ return !!(state.completed[pKey] && state.completed[pKey][lvlId]); }
+function setLevelDone(pKey,lvlId){
+  if(!state.completed[pKey]) state.completed[pKey] = {};
+  state.completed[pKey][lvlId] = true; saveState();
+}
+function planetProgress(p){
+  const total = p.levels.length; const done = Object.values(state.completed[p.key]||{}).filter(Boolean).length;
+  return {done,total, pct: Math.round((done/total)*100)||0};
+}
+function unlockNextIfReady(currentKey){
+  const p = planetByKey(currentKey); const idx = GAME.planets.indexOf(p);
+  const {done,total} = planetProgress(p);
+  if(done===total){
+    const next = GAME.planets[idx+1];
+    if(next && !state.unlockedPlanets[next.key]){
+      state.unlockedPlanets[next.key] = true; saveState();
+      toast(`¡Has desbloqueado ${next.name}!`);
+    }
+  }
+}
+
+// ------------------ RENDER: MAPA ------------------
+function renderMap(){
+  const wrap = document.getElementById('planets');
+  wrap.innerHTML = '';
+  let totalLevels=0, totalDone=0;
+  GAME.planets.forEach(p=>{ totalLevels += p.levels.length; totalDone += (state.completed[p.key] ? Object.values(state.completed[p.key]).filter(Boolean).length : 0)});
+  const pctTotal = Math.round((totalDone/totalLevels)*100)||0;
+  document.getElementById('overallProgress').textContent = `Progreso total: ${pctTotal}%`;
+
+  GAME.planets.forEach(p=>{
+    const unlocked = !!state.unlockedPlanets[p.key];
+    const prog = planetProgress(p);
+
+    const card = document.createElement('div'); card.className='card planet';
+    card.innerHTML = `
+    <div class="planet-image-container">
+  <img src="planet-${p.id}.gif" alt="Planeta ${p.name}" class="planet-image" />
+</div>
+      <div class="title">${p.name}</div>
+      <div class="desc">${p.desc}</div>
+      <div class="badge">${prog.done}/${prog.total} niveles · ${prog.pct}%</div>
+    `;
+
+    if(unlocked){
+      card.style.cursor='pointer';
+      card.addEventListener('click',()=>openPlanet(p.key));
+    } else {
+      const lock = document.createElement('div'); lock.className='lock';
+      lock.innerHTML = '<span>🔒 Bloqueado</span>';
+      card.appendChild(lock);
+    }
+    wrap.appendChild(card);
+  });
+}
+
+// ------------------ RENDER: PLANETA (niveles) ------------------
+function openPlanet(pKey){
+  current.planetKey = pKey; current.level = null; showScreen('screen-planet');
+  const p = planetByKey(pKey);
+  document.getElementById('planetTitle').textContent = `🪐 ${p.name}`;
+  document.getElementById('planetDesc').textContent = p.desc + ' · Completa todos para desbloquear el siguiente planeta';
+  const list = document.getElementById('levels'); list.innerHTML='';
+  p.levels.forEach(lvl=>{
+    const done = isLevelDone(pKey, lvl.id);
+    const el = document.createElement('div'); el.className='card level';
+    el.innerHTML = `
+      <h4>${p.name} · Nivel ${lvl.id}: ${lvl.name}</h4>
+      <div class="desc">${lvl.questions.length} preguntas</div>
+      <div class="${done? 'status-done':'status-todo'}">${done? '✔ Completado':'Pendiente'}</div>
+      <button class="btn" ${done? '':'autofocus'}>${done? 'Repetir' : 'Empezar'}</button>
+    `;
+    el.querySelector('button').addEventListener('click',()=>startLevel(pKey,lvl.id));
+    list.appendChild(el);
+  });
+}
+
+// ------------------ QUIZ LOGIC (con vidas) ------------------
+const current = { planetKey:null, level:null, qi:0, correct:0, lives:3 };
+
+function updateLivesBadge(){
+  const lb = document.getElementById('livesBadge');
+  lb.style.display = 'inline-flex';
+  const hearts = '❤️'.repeat(current.lives) + '🖤'.repeat(3-current.lives);
+  lb.textContent = `Vidas: ${hearts}`;
+}
+
+function startLevel(pKey, lvlId){
+  current.planetKey=pKey; current.level=lvlId; current.qi=0; current.correct=0; current.lives=3;
+  showScreen('screen-quiz'); renderQuestion();
+}
+function exitQuiz(){
+  if(current.planetKey){ openPlanet(current.planetKey); }
+  else { showScreen('screen-map'); }
+}
+function renderQuestion(){
+  const p = planetByKey(current.planetKey);
+  const lvl = p.levels.find(l=>l.id===current.level);
+  const q = lvl.questions[current.qi];
+  document.getElementById('quizTitle').textContent = `🪐 ${p.name} · Nivel ${lvl.id}: ${lvl.name}`;
+  document.getElementById('quizSubtitle').textContent = `Pregunta ${current.qi+1} de ${lvl.questions.length}`;
+  const bar = document.getElementById('progressBar');
+  bar.style.width = ((current.qi)/lvl.questions.length*100) + '%';
+
+  updateLivesBadge();
+
+  const wrap = document.getElementById('quiz');
+  wrap.innerHTML = '';
+  const qEl = document.createElement('div'); qEl.className='question'; qEl.textContent = q.q;
+  wrap.appendChild(qEl);
+
+  const opts = document.createElement('div'); opts.className='options';
+  q.opts.forEach((text, idx)=>{
+    const b = document.createElement('button'); b.className='option'; b.textContent=text; b.setAttribute('aria-label', `Opción ${idx+1}`);
+    b.addEventListener('click', ()=>choose(idx));
+    opts.appendChild(b);
+  });
+  wrap.appendChild(opts);
+}
+function choose(idx){
+  const p = planetByKey(current.planetKey);
+  const lvl = p.levels.find(l=>l.id===current.level);
+  const q = lvl.questions[current.qi];
+  const buttons = Array.from(document.querySelectorAll('.option'));
+  buttons.forEach((b,i)=>{
+    b.disabled=true;
+    if(i===q.ans) b.classList.add('correct');
+    if(i===idx && idx!==q.ans) b.classList.add('wrong');
+  });
+  const correct = idx===q.ans; if(correct) current.correct++;
+  if(!correct){
+    current.lives = Math.max(0, current.lives - 1);
+    updateLivesBadge();
+    toast('❌ Incorrecto · -1 vida');
+    stop();
+    reproducirIncorrecto()
+    
+  } else {
+    toast('✅ Correcto');
+    reproducirCorrecto()
+  }
+
+  setTimeout(()=>{
+    // Si se quedó sin vidas, reinicia el nivel
+    if(current.lives === 0){
+      levelFailed();
+      return;
+    }
+    current.qi++;
+    if(current.qi < lvl.questions.length){
+      renderQuestion();
+    } else {
+      finishLevel();
+    }
+  }, 700);
+}
+
+function levelFailed(){
+  const p = planetByKey(current.planetKey);
+  const lvl = p.levels.find(l=>l.id===current.level);
+  document.getElementById('progressBar').style.width='0%';
+  const wrap = document.getElementById('quiz');
+  wrap.innerHTML = `
+    <h3 style="margin:0 0 8px">Sin vidas</h3>
+    <p style="color:var(--muted);margin-top:0">Perdiste las 3 vidas en <b>${p.name} · Nivel ${lvl.id}: ${lvl.name}</b>.</p>
+    <p>🔁 Debes <b>reiniciar</b> el nivel desde la primera pregunta.</p>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px">
+      <button class="btn" onclick="startLevel('${current.planetKey}', ${current.level})">Reiniciar nivel</button>
+      <button class="btn" onclick="openPlanet('${current.planetKey}')">Volver a niveles</button>
+      <button class="btn" onclick="showScreen('screen-map'); renderMap();">Mapa</button>
+    </div>
+  `;
+}
+
+function finishLevel(){
+  const p = planetByKey(current.planetKey);
+  const lvl = p.levels.find(l=>l.id===current.level);
+  document.getElementById('progressBar').style.width='100%';
+  const wrap = document.getElementById('quiz');
+  const total = lvl.questions.length; const ok = current.correct; const passed = ok >= Math.ceil(total*0.7) && current.lives>0;
+  if(passed){ setLevelDone(current.planetKey, current.level); unlockNextIfReady(current.planetKey); }
+  wrap.innerHTML = `
+    <h3 style="margin:0 0 8px">Resultado</h3>
+    <p style="color:var(--muted);margin-top:0">Has respondido <b>${ok}/${total}</b> correctamente.</p>
+    <p>${passed? '🎉 <b>¡Nivel superado!</b>':'🔁 No alcanzaste el 70% o te quedaste sin vidas. ¡Intenta de nuevo!'}</p>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px">
+      <button class="btn" onclick="startLevel('${current.planetKey}', ${current.level})">${passed? 'Repetir nivel':'Reintentar'}</button>
+      <button class="btn" onclick="openPlanet('${current.planetKey}')">Volver a niveles</button>
+      <button class="btn" onclick="showScreen('screen-map'); renderMap();">Mapa</button>
+    </div>
+  `;
+  renderMap(); // actualizar progreso global
+}
+
+// ------------------ UTIL ------------------
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+function toast(msg){
+  const t = document.getElementById('toast'); t.innerHTML = msg; t.classList.add('show');
+  clearTimeout(toast._t); toast._t = setTimeout(()=>t.classList.remove('show'), 1100);
+}
+
+// ------------------ INIT ------------------
+loadState();
+renderMap();
+
+// UI buttons
+document.getElementById('btnMap').addEventListener('click',()=>{ showScreen('screen-map'); });
+
+document.getElementById('btnReset').addEventListener('click',()=>{
+  if(confirm('¿Seguro que quieres reiniciar todo el progreso?')) resetState();
+});
+
+</script>
+
+
+</body>
+</html>
